@@ -1,0 +1,28 @@
+{{template "header.html" .}}
+<h1 class="mb-4">Profile</h1>
+{{if .error}}<div class="alert alert-danger">{{.error}}</div>{{end}}
+{{if .success}}<div class="alert alert-success">{{.success}}</div>{{end}}
+<form method="POST" action="/user/profile">
+    <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" class="form-control" id="username" name="username" value="{{.user.Username}}" required>
+    </div>
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{.user.Email}}" required>
+    </div>
+    <div class="mb-3">
+        <label for="firstName" class="form-label">First Name</label>
+        <input type="text" class="form-control" id="firstName" name="firstName" value="{{.user.FirstName}}" required>
+    </div>
+    <div class="mb-3">
+        <label for="lastName" class="form-label">Last Name</label>
+        <input type="text" class="form-control" id="lastName" name="lastName" value="{{.user.LastName}}" required>
+    </div>
+    <div class="mb-3">
+        <label for="address" class="form-label">Address</label>
+        <input type="text" class="form-control" id="address" name="address" value="{{.user.Address}}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Update Profile</button>
+</form>
+{{template "footer.html"}}

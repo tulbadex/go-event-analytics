@@ -1,0 +1,57 @@
+{{template "header.html" .}}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        {{ if .error }}
+            <div class="alert alert-danger">
+                {{.error}}
+            </div>
+        {{ end }}
+
+        {{ if .success }}
+            <div class="alert alert-success">
+                {{.success}}
+            </div>
+        {{ end }}
+
+        <h2 class="mb-4">Register</h2>
+        <form method="POST" action="/auth/register">
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" id="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" id="email" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" name="password" id="password" required>
+                    <span class="input-group-text" id="password-toggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill" viewBox="0 0 16 16">
+                            <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>
+                            <path d="M0 8s3-5.5 8-5.5c5 0 8 5.5 8 5.5s-3 5.5-8 5.5S0 8 0 8zM8.25 11.25a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z"/>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+    </div>
+</div>
+{{template "footer.html"}}
+
+<script>
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('password-toggle');
+
+    passwordToggle.addEventListener('click', () => {
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+            passwordToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash-fill" viewBox="0 0 16 16"><path d="M16 8a8 8 0 1 1-16 0 8 8 0 0 1 16 0zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-.908-.305a1 1 0 0 1 1.414-.141l.908.907a1 1 0 0 1-1.414 1.414l-.908-.907zm1.414 1.414l.908-.907a1 1 0 0 1 1.414 1.414l-.908.907a1 1 0 0 1-1.414-1.414z"/></svg>';
+        } else {
+            passwordInput.type = "password";
+            passwordToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5c5 0 8 5.5 8 5.5s-3 5.5-8 5.5S0 8 0 8zM8.25 11.25a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z"/></svg>';
+        }
+    });
+</script>

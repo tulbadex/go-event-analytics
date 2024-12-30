@@ -1,0 +1,224 @@
+{{template "header.html" .}}
+
+<style>
+    .required::after {
+        content: "*";
+        color: red;
+        margin-left: 4px;
+    }
+
+    .custom-file-upload {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+    }
+
+    .custom-file-upload:hover {
+        border-color: #6c757d;
+    }
+
+    .image-preview {
+        max-width: 100%;
+        max-height: 200px;
+        margin-top: 1rem;
+        border-radius: 8px;
+        display: none;
+    }
+
+    .datetime-wrapper {
+        display: flex;
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .datetime-wrapper {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {{if .error}}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{.error}}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {{end}}
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h2 class="card-title mb-0">Create New Event</h2>
+                </div>
+                <div class="card-body">
+                    <form action="/events/create" method="POST" enctype="multipart/form-data" id="eventForm">
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label required">Title</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="title" 
+                                   name="title" 
+                                   required 
+                                   maxlength="255"
+                                   placeholder="Enter event title">
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label required">Description</label>
+                            <textarea class="form-control" 
+                                      id="description" 
+                                      name="description" 
+                                      rows="4" 
+                                      required
+                                      placeholder="Describe your event"></textarea>
+                        </div>
+
+                        <!-- Date and Time -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="startTime" class="form-label required">Start Date & Time</label>
+                                <input type="datetime-local" 
+                                       class="form-control" 
+                                       id="startTime" 
+                                       name="startTime" 
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="endTime" class="form-label required">End Date & Time</label>
+                                <input type="datetime-local" 
+                                       class="form-control" 
+                                       id="endTime" 
+                                       name="endTime" 
+                                       required>
+                            </div>
+                        </div>
+
+                        <!-- Location -->
+                        <div class="mb-3">
+                            <label for="location" class="form-label required">Location</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="location" 
+                                   name="location" 
+                                   required
+                                   placeholder="Event location">
+                        </div>
+
+                        <!-- Image Upload -->
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Event Image</label>
+                            <label class="custom-file-upload d-block">
+                                <input type="file" 
+                                       class="form-control d-none" 
+                                       id="image" 
+                                       name="image"
+                                       accept="image/*">
+                                <i class="bi bi-cloud-upload"></i>
+                                <div>Click or drag to upload image</div>
+                                <small class="text-muted">Maximum file size: 5MB</small>
+                            </label>
+                            <img id="imagePreview" src="" alt="Preview" class="image-preview">
+                        </div>
+
+                        <!-- Status -->
+                        <div class="mb-4">
+                            <label class="form-label">Status</label>
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="radio" 
+                                       name="status" 
+                                       id="statusDraft" 
+                                       value="draft" 
+                                       checked>
+                                <label class="form-check-label" for="statusDraft">
+                                    Save as Draft
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="radio" 
+                                       name="status" 
+                                       id="statusPublished" 
+                                       value="published">
+                                <label class="form-check-label" for="statusPublished">
+                                    Publish Now
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="/dashboard" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Event</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set minimum date for datetime inputs
+    const now = new Date();
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 16);
+    
+    document.getElementById('startTime').min = localISOTime;
+    document.getElementById('endTime').min = localISOTime;
+
+    // Image preview
+    const imageInput = document.getElementById('image');
+    const imagePreview = document.getElementById('imagePreview');
+
+    imageInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                this.value = '';
+                imagePreview.style.display = 'none';
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file');
+                this.value = '';
+                imagePreview.style.display = 'none';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Form validation
+    const form = document.getElementById('eventForm');
+    form.addEventListener('submit', function(event) {
+        const startTime = new Date(document.getElementById('startTime').value);
+        const endTime = new Date(document.getElementById('endTime').value);
+
+        if (endTime <= startTime) {
+            event.preventDefault();
+            alert('End time must be after start time');
+            return;
+        }
+    });
+});
+</script>
+
+{{template "footer.html" .}}

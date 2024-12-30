@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; }
+        .button { background-color: #007bff; color: white !important; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #888888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to Event Analytics!</h2>
+        <p>Thank you for registering. Please verify your email by clicking the button below:</p>
+        <a href="{{.VerifyURL}}" class="button">Verify Email</a>
+    </div>
+
+    <div class="footer">
+        &copy; 2024 Your Company. All Rights Reserved.
+    </div>
+</body>
+</html>

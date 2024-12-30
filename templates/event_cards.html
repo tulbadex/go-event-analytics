@@ -1,0 +1,68 @@
+{{range .events}}
+<div class="col">
+    <div class="card h-100 shadow-sm">
+        <img src="{{if .Image}}/uploads/{{.Image}}{{else}}/static/images/default-event.jpg{{end}}" 
+             class="card-img-top" alt="Event Image" style="height: 200px; object-fit: cover;">
+        <div class="card-body">
+            <h5 class="card-title text-truncate">{{.Title}}</h5>
+            <p class="card-text text-truncate" style="max-height: 3.6em; overflow: hidden;">{{.Description}}</p>
+            <p class="text-muted small">{{.StartTime}}</p>
+            <p class="fw-bold">Location: {{.Location}}</p>
+            {{if eq .Status "draft"}}
+            <span class="badge bg-warning">Draft</span>
+            {{else if eq .Status "published"}}
+            <span class="badge bg-success">Published</span>
+            {{end}}
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a href="/events/{{.ID}}" class="btn btn-outline-primary btn-sm">View</a>
+            {{if .IsEditable}}
+            <div>
+                <a href="/events/edit/{{.ID}}" class="btn btn-primary btn-sm">Edit</a>
+                <button onclick="confirmDelete('{{.ID}}')" class="btn btn-danger btn-sm">Delete</button>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{if .hasMore}}
+<script>
+    document.getElementById('loadMore').setAttribute('hx-get', '/dashboard?page={{.nextPage}}');
+</script>
+{{else}}
+<script>
+    document.getElementById('loadMore').remove();
+</script>
+{{end}}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this event?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" action="">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(eventId) {
+    const deleteForm = document.getElementById('deleteForm');
+    deleteForm.action = `/events/delete/${eventId}`;
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
