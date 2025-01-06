@@ -1,35 +1,56 @@
 package utils
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
+	// "math/rand"
+	"path/filepath"
+	"regexp"
 	"time"
 
-	"gopkg.in/gomail.v2"
-	"os"
 	"fmt"
 	"net/http"
+	"os"
 
+	"gopkg.in/gomail.v2"
+
+	"context"
+	"errors"
 	"event-analytics/config"
 	"event-analytics/models"
-	"errors"
+
 	"github.com/gin-gonic/gin"
-	"context"
 
 	"bytes"
 	"html/template"
 	"log"
 
+	"strconv"
 	"strings"
 )
+ 
+// generateRandomString creates a random string of given length from the provided charset
+func generateRandomString(length int, charset string) string {
+    var sb strings.Builder
+    charsetLength := big.NewInt(int64(len(charset)))
+    
+    for i := 0; i < length; i++ {
+        num, err := rand.Int(rand.Reader, charsetLength)
+        if err != nil {
+            // In case of error, use a fallback character
+            sb.WriteByte(charset[0])
+            continue
+        }
+        sb.WriteByte(charset[num.Int64()])
+    }
+    
+    return sb.String()
+}
 
+// GenerateRandomToken generates a 32-character random token
 func GenerateRandomToken() string {
-	// rand.Seed(time.Now().UnixNano())
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	token := make([]rune, 32)
-	for i := range token {
-		token[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(token)
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    return generateRandomString(32, charset)
 }
 
 // SendEmailAsync sends an email asynchronously
@@ -244,4 +265,31 @@ func IsAdminOrOwner(user interface{}, event models.Event) bool {
     }
 
     return false
+}
+
+func ParsePage(page string) int {
+	if pageNum, err := strconv.Atoi(page); err == nil && pageNum > 0 {
+		return pageNum
+	}
+	return 1
+}
+
+// GenerateSecureFileName creates a secure, long, and structured file name
+func GenerateSecureFileName(originalName string) string {
+    // Generate a random alphanumeric string of length 32
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    randomPart := generateRandomString(32, charset)
+
+    // Sanitize original file name (remove special characters)
+    sanitizedFileName := regexp.MustCompile(`[^a-zA-Z0-9.\-_]`).ReplaceAllString(originalName, "")
+    if len(sanitizedFileName) > 50 { // Limit to a maximum length
+        sanitizedFileName = sanitizedFileName[:50]
+    }
+
+    // Append file extension
+    extension := filepath.Ext(originalName)
+    sanitizedBaseName := strings.TrimSuffix(sanitizedFileName, extension)
+
+    // Construct the final name
+    return fmt.Sprintf("%s_%s%s", randomPart, sanitizedBaseName, extension)
 }

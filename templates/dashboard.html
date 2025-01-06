@@ -25,17 +25,36 @@
     .loading .loading-spinner {
         display: inline-block;
     }
+
+    .alert {
+        animation: fadeOut 5s forwards;
+    }
+
+    @keyframes fadeOut {
+        0% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { opacity: 0; }
+    }
 </style>
 
 <div class="container mt-4">
     {{if .error}}
-    <div class="alert alert-danger">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
         {{.error}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {{end}}
+
     {{if .success}}
     <div class="alert alert-success">
         {{.success}}
+    </div>
+    {{end}}
+
+    {{if .flash}}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{.flash}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {{end}}
 
@@ -53,7 +72,7 @@
         <button 
             id="loadMore" 
             class="btn btn-outline-secondary"
-            hx-get="/dashboard?page={{.nextPage}}"
+            hx-get="/user/dashboard?page={{.nextPage}}"
             hx-trigger="click"
             hx-target="#eventContainer"
             hx-swap="beforeend"
@@ -66,5 +85,19 @@
     </div>
     {{end}}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            setTimeout(() => {
+                const closeButton = alert.querySelector('.btn-close');
+                if (closeButton) {
+                    closeButton.click();
+                }
+            }, 5000);
+        });
+    });
+</script>
 
 {{template "footer.html" .}}

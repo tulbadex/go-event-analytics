@@ -7,8 +7,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"event-analytics/models"
 	"github.com/joho/godotenv"
+	"event-analytics/models"
 )
 
 var DB *gorm.DB

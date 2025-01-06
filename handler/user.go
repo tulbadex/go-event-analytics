@@ -1,17 +1,20 @@
 package handler
 
 import (
-    "event-analytics/render"
-    "github.com/gin-gonic/gin"
+	"event-analytics/render"
 
-    "log"
-    "net/http"
+	"github.com/gin-gonic/gin"
+
 	"event-analytics/config"
 	"event-analytics/models"
-	"event-analytics/utils"
+	"event-analytics/services"
+	"log"
+	"net/http"
 
-    "gorm.io/gorm"
-    "errors"
+	"errors"
+	"strconv"
+
+	"gorm.io/gorm"
 )
 
 func ShowLoginPage(c *gin.Context) {
@@ -31,6 +34,8 @@ func ShowLoginPage(c *gin.Context) {
             message.Error = "Invalid reset verification token"
         case "auth_required":
             message.Error = "Please login to access the page"
+        case "invalid_user":
+            message.Error = "User data is invalid"
         default:
             message.Error = "An error occurred"
         }
@@ -97,31 +102,81 @@ func ShowResetPasswordPage(c *gin.Context) {
 }
 
 func Dashboard(c *gin.Context) {
-    user, err := utils.GetUserFromSession(c)
-    if err != nil {
-        c.Redirect(http.StatusFound, "/auth/login")
+    user, exists := c.Get("user")
+    if !exists || user == nil {
+        c.Redirect(http.StatusFound, "/auth/login?error=auth_required")
+        c.Abort()
         return
     }
+
+    currentUser, ok := user.(*models.User)
+    if !ok {
+        c.Redirect(http.StatusFound, "/auth/login?error=invalid_user")
+        c.Abort()
+        return
+    }
+
+    error_message := c.Query("error")
+
+    flashMessage, _ := c.Cookie("flash")
+    c.SetCookie("flash", "", -1, "/", "", false, true)
+
+    page := c.DefaultQuery("page", "1")
+    limit := 4
+    pageNum, err := strconv.Atoi(page)
+    if err != nil {
+        pageNum = 1
+    }
+    offset := (pageNum - 1) * limit
 
     var events []models.Event
-    if err := config.DB.Find(&events).Error; err != nil {
-        render.Render(c, gin.H{
-            "error":   "Failed to fetch events",
-            "title":   "Dashboard",
-            "user":    user,
-            "content": nil,
-        }, "dashboard.html")
+    result := config.DB.Offset(offset).Limit(limit).Find(&events)
+
+    if result.Error != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch events"})
         return
     }
 
-    // Debug logging
-    log.Printf("Dashboard: User data: %+v", user)
-    log.Printf("Dashboard: Events count: %d", len(events))
+    // formattedEvents := make([]gin.H, len(events))
+    // for i, event := range events {
+    //     formattedEvents[i] = gin.H{
+    //         "ID":           event.ID,
+    //         "Title":        event.Title,
+    //         "Location":     event.Location,
+    //         "Description":  event.Description,
+    //         "Status":       event.Status,
+    //         "Image":        event.Image,
+    //         "StartTime":    utils.FormatDate(event.StartTime),
+    //         "EndTime":      utils.FormatDate(event.EndTime),
+    //         "IsEditable":   services.CheckEventEditPermission(&event, currentUser),
+    //     }
+    // }
+
+    for i := range events {
+        events[i].IsEditable = services.CheckEventEditPermission(&events[i], currentUser)
+    }
+
+    // HTMX handling
+    if c.GetHeader("HX-Request") != "" {
+        c.HTML(http.StatusOK, "event_cards.html", gin.H{
+            "content": events,
+        })
+        return
+    }
+
+    // Full page rendering
+    var totalEvents int64
+    config.DB.Model(&models.Event{}).Count(&totalEvents)
+    hasMore := offset+limit < int(totalEvents)
 
     render.Render(c, gin.H{
-        "title":   "Dashboard",
-        "user":    user,
-        "content": events,
+        "title":    "Dashboard",
+        "user":     user,
+        "content":  events,
+        "hasMore":  hasMore,
+        "nextPage": pageNum + 1,
+        "flash":    flashMessage,
+        "error":    error_message,
     }, "dashboard.html")
 }
 

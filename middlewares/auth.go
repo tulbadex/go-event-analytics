@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"event-analytics/models"
 	"event-analytics/utils"
 	// "log"
 )
@@ -38,27 +39,19 @@ func PreventAuthenticatedAccess() gin.HandlerFunc {
 	}
 }
 
-// func UserMiddleware() gin.HandlerFunc {
-//     return func(c *gin.Context) {
-//         user, _ := utils.GetUserFromSession(c)
-//         c.Set("user", user)
-//         c.Next()
-//     }
-// }
-
 func UserMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         user, err := utils.GetUserFromSession(c)
         if err != nil {
             c.Set("user", nil)
         } else {
-            sanitizedUser := gin.H{
-                "ID":       	user.ID,
-                "Username": 	user.Username,
-                "Email":    	user.Email,
-                "FirstName":    user.FirstName,
-                "LastName":    	user.LastName,
-                "Address":    	user.Address,
+            sanitizedUser := &models.User{
+                ID:        user.ID,
+                Username:  user.Username,
+                Email:     user.Email,
+                FirstName: user.FirstName,
+                LastName:  user.LastName,
+                Address:   user.Address,
             }
             c.Set("user", sanitizedUser)
         }
@@ -66,3 +59,14 @@ func UserMiddleware() gin.HandlerFunc {
     }
 }
 
+func FlashMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        flash, err := c.Cookie("flash")
+        if err == nil {
+            c.Set("flash", flash)
+            // Clear the flash cookie
+            c.SetCookie("flash", "", -1, "/", "", false, true)
+        }
+        c.Next()
+    }
+}

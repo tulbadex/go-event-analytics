@@ -25,7 +25,6 @@
         max-height: 200px;
         margin-top: 1rem;
         border-radius: 8px;
-        display: none;
     }
 
     .datetime-wrapper {
@@ -52,20 +51,20 @@
 
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h2 class="card-title mb-0">Create New Event</h2>
+                    <h2 class="card-title mb-0">Edit Event</h2>
                 </div>
                 <div class="card-body">
-                    <form action="/events/create" method="POST" enctype="multipart/form-data" id="eventForm">
+                    <form action="/events/update/{{.event.ID}}" method="POST" enctype="multipart/form-data" id="eventForm">
                         <!-- Title -->
                         <div class="mb-3">
                             <label for="title" class="form-label required">Title</label>
                             <input type="text" 
                                    class="form-control" 
                                    id="title" 
-                                   name="title" 
+                                   name="title"
+                                   value="{{.event.Title}}"
                                    required 
-                                   maxlength="255"
-                                   placeholder="Enter event title">
+                                   maxlength="255">
                         </div>
 
                         <!-- Description -->
@@ -74,9 +73,8 @@
                             <textarea class="form-control" 
                                       id="description" 
                                       name="description" 
-                                      rows="4" 
-                                      required
-                                      placeholder="Describe your event"></textarea>
+                                      rows="4"
+                                      required>{{.event.Description}}</textarea>
                         </div>
 
                         <!-- Date and Time -->
@@ -86,7 +84,8 @@
                                 <input type="datetime-local" 
                                        class="form-control" 
                                        id="startTime" 
-                                       name="startTime" 
+                                       name="start_time"
+                                       value="{{formatDatetime .event.StartTime}}"
                                        required>
                             </div>
                             <div class="col-md-6">
@@ -94,7 +93,8 @@
                                 <input type="datetime-local" 
                                        class="form-control" 
                                        id="endTime" 
-                                       name="endTime" 
+                                       name="end_time" 
+                                       value="{{formatDatetime .event.EndTime}}"
                                        required>
                             </div>
                         </div>
@@ -106,8 +106,8 @@
                                    class="form-control" 
                                    id="location" 
                                    name="location" 
-                                   required
-                                   placeholder="Event location">
+                                   value="{{.event.Location}}"
+                                   required>
                         </div>
 
                         <!-- Image Upload -->
@@ -120,10 +120,13 @@
                                        name="image"
                                        accept="image/*">
                                 <i class="bi bi-cloud-upload"></i>
-                                <div>Click or drag to upload image</div>
+                                <div>Click or drag to upload new image</div>
                                 <small class="text-muted">Maximum file size: 5MB</small>
                             </label>
-                            <img id="imagePreview" src="" alt="Preview" class="image-preview">
+                            {{if .event.Image}}
+                            <img src="{{.event.Image}}" alt="Current event image" class="image-preview">
+                            {{end}}
+                            <img id="imagePreview" src="" alt="Preview" class="image-preview" style="display: none;">
                         </div>
 
                         <!-- Status -->
@@ -133,9 +136,9 @@
                                 <input class="form-check-input" 
                                        type="radio" 
                                        name="status" 
-                                       id="statusDraft" 
+                                       id="statusDraft"
                                        value="draft" 
-                                       checked>
+                                       {{if eq .event.Status "draft"}}checked{{end}}>
                                 <label class="form-check-label" for="statusDraft">
                                     Save as Draft
                                 </label>
@@ -145,7 +148,8 @@
                                        type="radio" 
                                        name="status" 
                                        id="statusPublished" 
-                                       value="published">
+                                       value="published"
+                                       {{if eq .event.Status "published"}}checked{{end}}>
                                 <label class="form-check-label" for="statusPublished">
                                     Publish Now
                                 </label>
@@ -154,8 +158,8 @@
 
                         <!-- Submit Buttons -->
                         <div class="d-flex justify-content-between">
-                            <a href="/dashboard" class="btn btn-outline-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Create Event</button>
+                            <a href="/user/dashboard" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Update Event</button>
                         </div>
                     </form>
                 </div>

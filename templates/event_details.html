@@ -1,0 +1,19 @@
+{{template "header.html" .}}
+    <div class="container mt-5">
+        <h1>{{.event.Title}}</h1>
+        <p class="text-muted">{{formatDisplay .event.StartTime}} - {{formatDisplay .event.EndTime}}</p>
+        <img src="{{if .event.Image}}{{.event.Image}}{{else}}/static/images/default_images/event_default.jpg{{end}}" 
+             class="img-fluid rounded mb-3" alt="Event Image">
+        <p>{{.event.Description}}</p>
+        <p><strong>Location:</strong> {{.event.Location}}</p>
+        <p><strong>Start Time:</strong> {{formatDisplay .event.StartTime}}</p>
+        <p><strong>End Time:</strong> {{formatDisplay .event.EndTime}}</p>
+        <p><strong>Status:</strong> 
+            {{if eq .event.Status "draft"}}<span class="badge bg-warning">Draft</span>{{end}}
+            {{if eq .event.Status "published"}}<span class="badge bg-success">Published</span>{{end}}
+        </p>
+        <a href="/user/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</body>
+</html>
+{{template "footer.html" .}}
