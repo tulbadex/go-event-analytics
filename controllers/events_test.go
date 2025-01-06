@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +19,7 @@ func TestCreateEvent(t *testing.T) {
 
 	t.Run("User not authenticated", func(t *testing.T) {
 		router := gin.Default()
-		router.POST("/events", models.CreateEvent)
+		router.POST("/events", CreateEvent)
 
 		req, _ := http.NewRequest(http.MethodPost, "/events", nil)
 		w := httptest.NewRecorder()
@@ -32,7 +33,8 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("Invalid input data", func(t *testing.T) {
 		router := gin.Default()
 		router.POST("/events", func(c *gin.Context) {
-			utils.SetUserInSession(c, &models.User{ID: 1})
+			id, _ := uuid.Parse("0ea7cf93-3a2a-40a9-8dd8-5fbcf19bd6d7")
+			utils.SetUserInSession(c, &models.User{ID: id})
 			CreateEvent(c)
 		})
 
@@ -57,7 +59,8 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("Invalid datetime format", func(t *testing.T) {
 		router := gin.Default()
 		router.POST("/events", func(c *gin.Context) {
-			utils.SetUserInSession(c, &models.User{ID: 1})
+			id, _ := uuid.Parse("0ea7cf93-3a2a-40a9-8dd8-5fbcf19bd6d7")
+			utils.SetUserInSession(c, &models.User{ID: id})
 			CreateEvent(c)
 		})
 
@@ -82,7 +85,8 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("End datetime before start datetime", func(t *testing.T) {
 		router := gin.Default()
 		router.POST("/events", func(c *gin.Context) {
-			utils.SetUserInSession(c, &models.User{ID: 1})
+			id, _ := uuid.Parse("0ea7cf93-3a2a-40a9-8dd8-5fbcf19bd6d7")
+			utils.SetUserInSession(c, &models.User{ID: id})
 			CreateEvent(c)
 		})
 
@@ -107,7 +111,8 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("Successful event creation", func(t *testing.T) {
 		router := gin.Default()
 		router.POST("/events", func(c *gin.Context) {
-			utils.SetUserInSession(c, &models.User{ID: 1})
+			id, _ := uuid.Parse("0ea7cf93-3a2a-40a9-8dd8-5fbcf19bd6d7")
+			utils.SetUserInSession(c, &models.User{ID: id})
 			CreateEvent(c)
 		})
 
