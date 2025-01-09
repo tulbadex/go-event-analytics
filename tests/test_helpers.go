@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/postgres"
@@ -260,6 +261,21 @@ func CreateSecondTestUser(t *testing.T) *models.User {
 	user.HashPassword()
 	assert.NoError(t, config.DB.Create(user).Error)
 	return user
+}
+
+func CreateTestEvent(t *testing.T, userID uuid.UUID) *models.Event {
+	event := &models.Event{
+		Title:       "Test Event",
+		Description: "Test Description",
+		StartTime:   time.Now(),
+		EndTime:     time.Now().Add(time.Hour * 2),
+		Location:    "Test Location",
+		CreatedBy:   userID,
+		Status:      "published",
+	}
+	result := config.DB.Create(event)
+	assert.NoError(t, result.Error)
+	return event
 }
 
 // SetupTestDB initializes the test database
