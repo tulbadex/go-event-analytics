@@ -115,6 +115,9 @@ func GetUserFromSession(c *gin.Context) (*models.User, error) {
 
 func SaveSession(token string, user models.User) error {
     // Convert UUID to string if it's not already a string
+    if config.RedisClient == nil {
+        return errors.New("Redis client is not initialized")
+    }
     userIDString := user.ID.String()
     return config.RedisClient.Set(context.Background(), token, userIDString, time.Hour).Err()
 }
@@ -292,4 +295,27 @@ func GenerateSecureFileName(originalName string) string {
 
     // Construct the final name
     return fmt.Sprintf("%s_%s%s", randomPart, sanitizedBaseName, extension)
+}
+
+func IsAdmin(user interface{}) bool {
+    currentUser, ok := user.(*models.User)
+    if !ok || currentUser == nil {
+        return false
+    }
+
+    var userRoles []models.Role
+    if err := config.DB.Model(&models.Role{}).
+        Joins("JOIN user_roles ON user_roles.role_id = roles.id").
+        Where("user_roles.user_id = ?", currentUser.ID).
+        Find(&userRoles).Error; err != nil {
+        return false
+    }
+
+    for _, role := range userRoles {
+        if role.Name == "admin" {
+            return true
+        }
+    }
+
+    return false
 }

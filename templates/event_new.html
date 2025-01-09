@@ -1,3 +1,4 @@
+
 {{template "header.html" .}}
 
 <style>
@@ -157,6 +158,16 @@
                             </div>
                         </div>
 
+                        <!-- Published Date & Time -->
+                        <div class="mb-3" id="publishedDateWrapper" style="display: none;">
+                            <label for="publishedDate" class="form-label required">Published Date & Time</label>
+                            <input type="datetime-local" 
+                                   class="form-control" 
+                                   id="publishedDate" 
+                                   name="published_date"
+                                   value="{{.formData.PublishedDate}}">
+                        </div>
+
                         <!-- Submit Buttons -->
                         <div class="d-flex justify-content-between">
                             <a href="/user/dashboard" class="btn btn-outline-secondary">Cancel</a>
@@ -169,61 +180,84 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Set minimum date for datetime inputs
-    const now = new Date();
-    const tzOffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 16);
-    
-    document.getElementById('startTime').min = localISOTime;
-    document.getElementById('endTime').min = localISOTime;
-
-    // Image preview
-    const imageInput = document.getElementById('image');
-    const imagePreview = document.getElementById('imagePreview');
-
-    imageInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (file) {
-            // Validate file size (5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB');
-                this.value = '';
-                imagePreview.style.display = 'none';
-                return;
-            }
-
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                alert('Please upload an image file');
-                this.value = '';
-                imagePreview.style.display = 'none';
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    // Form validation
-    const form = document.getElementById('eventForm');
-    form.addEventListener('submit', function(event) {
-        const startTime = new Date(document.getElementById('startTime').value);
-        const endTime = new Date(document.getElementById('endTime').value);
-
-        if (endTime <= startTime) {
-            event.preventDefault();
-            alert('End time must be after start time');
-            return;
-        }
-    });
-});
-</script>
-
 {{template "footer.html" .}}
+
+<script>   
+    document.addEventListener('DOMContentLoaded', function() {
+
+        const statusDraft = document.getElementById('statusDraft');
+        const statusPublished = document.getElementById('statusPublished');
+        const publishedDateWrapper = document.getElementById('publishedDateWrapper');
+        const publishedDate = document.getElementById('publishedDate');
+
+        // Function to toggle published date field visibility
+        function togglePublishedDate() {
+            if (statusDraft.checked) {
+                publishedDateWrapper.style.display = 'block';
+                publishedDate.required = true;
+            } else {
+                publishedDateWrapper.style.display = 'none';
+                publishedDate.required = false;
+            }
+        }
+
+        // Initialize state on page load
+        togglePublishedDate();
+
+        // Add change event listeners to radio buttons
+        statusDraft.addEventListener('change', togglePublishedDate);
+        statusPublished.addEventListener('change', togglePublishedDate);
+    
+        // Set up date/time constraints
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 16);
+    
+        document.getElementById('startTime').min = localISOTime;
+        document.getElementById('endTime').min = localISOTime;
+        publishedDate.min = localISOTime;
+    
+        // Image upload handling
+        const imageInput = document.getElementById('image');
+        const imagePreview = document.getElementById('imagePreview');
+    
+        imageInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    this.value = '';
+                    imagePreview.style.display = 'none';
+                    return;
+                }
+    
+                if (!file.type.startsWith('image/')) {
+                    alert('Please upload an image file');
+                    this.value = '';
+                    imagePreview.style.display = 'none';
+                    return;
+                }
+    
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    
+        // Form validation
+        const form = document.getElementById('eventForm');
+        form.addEventListener('submit', function(event) {
+            const startTime = new Date(document.getElementById('startTime').value);
+            const endTime = new Date(document.getElementById('endTime').value);
+    
+            if (endTime <= startTime) {
+                event.preventDefault();
+                alert('End time must be after start time');
+                return;
+            }
+        });
+    });
+</script>

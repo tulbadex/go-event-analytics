@@ -16,12 +16,13 @@ import (
 )
 
 type EventInput struct {
-    Title       string `form:"title" binding:"required"`
-    Description string `form:"description" binding:"required"`
-    StartTime   string `form:"start_time" binding:"required"`
-    EndTime     string `form:"end_time" binding:"required"`
-    Location    string `form:"location" binding:"required"`
-    Status      string `form:"status" binding:"required,oneof=draft published"`
+    Title           string `form:"title" binding:"required"`
+    Description     string `form:"description" binding:"required"`
+    StartTime       string `form:"start_time" binding:"required"`
+    EndTime         string `form:"end_time" binding:"required"`
+    Location        string `form:"location" binding:"required"`
+    Status          string `form:"status" binding:"required,oneof=draft published"`
+    PublishedDate   string `form:"published_date"`
 }
 
 // ShowCreateEventPage renders the create event page

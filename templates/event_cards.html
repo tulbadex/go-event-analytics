@@ -4,14 +4,14 @@
         <img src="{{if .Image}}{{.Image}}{{else}}/static/images/default_images/event_default.jpg{{end}}" 
              class="card-img-top" alt="Event Image" style="height: 200px; object-fit: cover;">
         <div class="card-body">
-            <h5 class="card-title text-truncate">{{.Title}}</h5>
-            <p class="card-text text-truncate" style="max-height: 3.6em; overflow: hidden;">{{.Description}}</p>
+            <h5 class="card-title">{{.Title}}</h5>
+            <p class="card-text" style="max-height: 3.6em; overflow: hidden;">{{.Description}}</p>
             <p class="text-muted small">{{formatDisplay .StartTime}} - {{formatDisplay .EndTime}}</p>
             <p class="fw-bold">Location: {{.Location}}</p>
             {{if eq .Status "draft"}}
-            <span class="badge bg-warning">Draft</span>
+                <span class="badge bg-warning">Draft</span>
             {{else if eq .Status "published"}}
-            <span class="badge bg-success">Published</span>
+                <span class="badge bg-success">Published</span>
             {{end}}
         </div>
         <div class="card-footer d-flex justify-content-between">

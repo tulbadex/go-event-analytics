@@ -2,6 +2,7 @@ package handler
 
 import (
 	"event-analytics/render"
+	"event-analytics/utils"
 
 	"github.com/gin-gonic/gin"
 
@@ -117,6 +118,112 @@ func Dashboard(c *gin.Context) {
     }
 
     error_message := c.Query("error")
+    flashMessage, _ := c.Cookie("flash")
+    c.SetCookie("flash", "", -1, "/", "", false, true)
+
+    page := c.DefaultQuery("page", "1")
+    limit := 4
+    pageNum, err := strconv.Atoi(page)
+    if err != nil {
+        pageNum = 1
+    }
+    offset := (pageNum - 1) * limit
+
+    var events []models.Event
+
+    // Fetch events based on visibility rules
+    query := config.DB.Offset(offset).Limit(limit)
+    if !utils.IsAdmin(currentUser) {
+        query = query.Where("status = ? OR created_by = ?", "published", currentUser.ID)
+    }
+    result := query.Find(&events)
+    if result.Error != nil {
+        // c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch events"})
+        c.Redirect(http.StatusFound, "/user/dashboard?error=Failed to fetch events")
+        c.Abort()
+        return
+    }
+
+    // Apply edit permissions and truncate descriptions
+    for i := range events {
+        events[i].IsEditable = services.CheckEventEditPermission(&events[i], currentUser)
+        events[i].Description = utils.Truncate(events[i].Description, 50) // Truncate to 50 characters
+    }
+
+    // HTMX handling
+    if c.GetHeader("HX-Request") != "" {
+        c.HTML(http.StatusOK, "event_cards.html", gin.H{
+            "content":  events,
+            "title":    "Dashboard",
+        })
+        return
+    }
+
+    // Count total events based on visibility rules for pagination
+    var totalEvents int64
+    countQuery := config.DB.Model(&models.Event{})
+    if !utils.IsAdmin(currentUser) {
+        countQuery = countQuery.Where("status = ? OR created_by = ?", "published", currentUser.ID)
+    }
+    countQuery.Count(&totalEvents)
+
+    hasMore := offset+limit < int(totalEvents)
+
+    render.Render(c, gin.H{
+        "title":    "Dashboard",
+        "user":     currentUser,
+        "content":  events,
+        "hasMore":  hasMore,
+        "nextPage": pageNum + 1,
+        "flash":    flashMessage,
+        "error":    error_message,
+    }, "dashboard.html")
+}
+
+
+func ShowProfilePage(c *gin.Context) {
+    user, exists := c.Get("user")
+    if !exists || user == nil {
+        log.Printf("Dashboard: No user in context")
+        c.Redirect(http.StatusFound, "/auth/login")
+        return
+    }
+
+    render.Render(c, gin.H{
+        "user":  user,
+		"title": "Profile",
+    }, "profile.html")
+}
+
+func ShowChangePasswordPage(c *gin.Context) {
+    user, exists := c.Get("user")
+    if !exists || user == nil {
+        c.Redirect(http.StatusFound, "/auth/login")
+        return
+    }
+
+    render.Render(c, gin.H{
+		"title": "Change Password",
+        "user":  user,
+    }, "change_password.html")
+}
+
+/* func Dashboard(c *gin.Context) {
+    user, exists := c.Get("user")
+    if !exists || user == nil {
+        c.Redirect(http.StatusFound, "/auth/login?error=auth_required")
+        c.Abort()
+        return
+    }
+
+    currentUser, ok := user.(*models.User)
+    if !ok {
+        c.Redirect(http.StatusFound, "/auth/login?error=invalid_user")
+        c.Abort()
+        return
+    }
+
+    error_message := c.Query("error")
 
     flashMessage, _ := c.Cookie("flash")
     c.SetCookie("flash", "", -1, "/", "", false, true)
@@ -154,6 +261,7 @@ func Dashboard(c *gin.Context) {
 
     for i := range events {
         events[i].IsEditable = services.CheckEventEditPermission(&events[i], currentUser)
+        events[i].Description = utils.Truncate(events[i].Description, 50) // Truncate to 50 characters
     }
 
     // HTMX handling
@@ -178,31 +286,4 @@ func Dashboard(c *gin.Context) {
         "flash":    flashMessage,
         "error":    error_message,
     }, "dashboard.html")
-}
-
-func ShowProfilePage(c *gin.Context) {
-    user, exists := c.Get("user")
-    if !exists || user == nil {
-        log.Printf("Dashboard: No user in context")
-        c.Redirect(http.StatusFound, "/auth/login")
-        return
-    }
-
-    render.Render(c, gin.H{
-        "user":  user,
-		"title": "Profile",
-    }, "profile.html")
-}
-
-func ShowChangePasswordPage(c *gin.Context) {
-    user, exists := c.Get("user")
-    if !exists || user == nil {
-        c.Redirect(http.StatusFound, "/auth/login")
-        return
-    }
-
-    render.Render(c, gin.H{
-		"title": "Change Password",
-        "user":  user,
-    }, "change_password.html")
-}
+} */

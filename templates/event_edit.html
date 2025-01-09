@@ -156,6 +156,16 @@
                             </div>
                         </div>
 
+                        <!-- Published Date & Time -->
+                        <div class="mb-3" id="publishedDateWrapper" style="display: none;">
+                            <label for="publishedDate" class="form-label required">Published Date & Time</label>
+                            <input type="datetime-local" 
+                                   class="form-control" 
+                                   id="publishedDate" 
+                                   name="published_date"
+                                   value="{{formatDatetime .event.PublishedDate}}">
+                        </div>
+
                         <!-- Submit Buttons -->
                         <div class="d-flex justify-content-between">
                             <a href="/user/dashboard" class="btn btn-outline-secondary">Cancel</a>
@@ -209,6 +219,29 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.readAsDataURL(file);
         }
     });
+
+    const statusDraft = document.getElementById('statusDraft');
+    const statusPublished = document.getElementById('statusPublished');
+    const publishedDateWrapper = document.getElementById('publishedDateWrapper');
+    const publishedDate = document.getElementById('publishedDate');
+
+    // Function to toggle published date field visibility
+    function togglePublishedDate() {
+        if (statusDraft.checked) {
+            publishedDateWrapper.style.display = 'block';
+            publishedDate.required = true;
+        } else {
+            publishedDateWrapper.style.display = 'none';
+            publishedDate.required = false;
+        }
+    }
+
+    // Initialize state on page load
+    togglePublishedDate();
+
+    // Add change event listeners to radio buttons
+    statusDraft.addEventListener('change', togglePublishedDate);
+    statusPublished.addEventListener('change', togglePublishedDate);
 
     // Form validation
     const form = document.getElementById('eventForm');

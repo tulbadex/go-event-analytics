@@ -3,11 +3,17 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"log"
+
+	// "event-analytics/handler"
 	"event-analytics/models"
 	"fmt"
+
 	// "log"
 	"net/http"
+	"net/url"
 	"os"
+
 	// "path/filepath"
 	"time"
 
@@ -19,12 +25,13 @@ import (
 )
 
 type EventInput struct {
-    Title       string `form:"title" binding:"required"`
-    Description string `form:"description" binding:"required"`
-    StartTime   string `form:"start_time" binding:"required"`
-    EndTime     string `form:"end_time" binding:"required"`
-    Location    string `form:"location" binding:"required"`
-    Status      string `form:"status" binding:"required,oneof=draft published"`
+    Title           string `form:"title" binding:"required"`
+    Description     string `form:"description" binding:"required"`
+    StartTime       string `form:"start_time" binding:"required"`
+    EndTime         string `form:"end_time" binding:"required"`
+    Location        string `form:"location" binding:"required"`
+    Status          string `form:"status" binding:"required,oneof=draft published"`
+    PublishedDate   string `form:"published_date"`
 }
 
 // GetEvents retrieves all events and renders the dashboard
@@ -40,20 +47,17 @@ func GetEvents(c *gin.Context) {
 	})
 }
 
-
 func CreateEvent(c *gin.Context) {
     user, err := utils.GetUserFromSession(c)
     if err != nil {
+        log.Printf("Failed to retrieve user from session: %v", err)
         c.Redirect(http.StatusFound, "/auth/login?error=auth_required")
         return
     }
 
     var input EventInput
     if err := c.ShouldBind(&input); err != nil {
-        // Store form data in session temporarily
-        formData, _ := json.Marshal(input)
-        c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
-        c.Redirect(http.StatusFound, "/events/new?error=Please fill all required fields correctly")
+        handleRedirectWithFormData(c, input, "Please fill all required fields correctly")
         return
     }
 
@@ -67,35 +71,40 @@ func CreateEvent(c *gin.Context) {
         return
     }
 
-    const datetimeFormat = "2006-01-02T15:04"
-    startTime, err := time.Parse(datetimeFormat, input.StartTime)
+    startTime, err := parseDateTime(input.StartTime)
     if err != nil {
-        formData, _ := json.Marshal(input)
-        c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
-        c.Redirect(http.StatusFound, "/events/new?error=Invalid start datetime format")
+        handleRedirectWithFormData(c, input, "Invalid start datetime format")
         return
     }
 
-    endTime, err := time.Parse(datetimeFormat, input.EndTime)
+    endTime, err := parseDateTime(input.EndTime)
     if err != nil {
-        formData, _ := json.Marshal(input)
-        c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
-        c.Redirect(http.StatusFound, "/events/new?error=Invalid end datetime format")
+        handleRedirectWithFormData(c, input, "Invalid end datetime format")
         return
     }
 
     if endTime.Before(startTime) {
-        formData, _ := json.Marshal(input)
-        c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
-        c.Redirect(http.StatusFound, "/events/new?error=End datetime must be after start datetime")
+        handleRedirectWithFormData(c, input, "End datetime must be after start datetime")
         return
     }
 
-    // Handle file upload
+    var publishedDate *time.Time
+    if input.Status == "published" {
+        now := time.Now()
+        publishedDate = &now
+    } else if input.Status == "draft" && input.PublishedDate != "" {
+        parsedDate, err := parseDateTime(input.PublishedDate)
+        if err != nil {
+            handleRedirectWithFormData(c, input, "Invalid publish date format")
+            return
+        }
+        publishedDate = &parsedDate
+    }
+
     file, _ := c.FormFile("image")
     imagePath := ""
     if file != nil {
-        if err := os.MkdirAll("uploads", 0755); err != nil {
+        if err := os.MkdirAll("uploads/events/", 0755); err != nil {
             formData, _ := json.Marshal(input)
             c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
             c.Redirect(http.StatusFound, "/events/new?error=Server configuration error")
@@ -104,7 +113,7 @@ func CreateEvent(c *gin.Context) {
 
         // filename := fmt.Sprintf("%d%s", time.Now().Unix(), file.Filename)
         filename    := utils.GenerateSecureFileName(file.Filename)
-        imagePath   = "/uploads/" + filename
+        imagePath   = "/uploads/events/" + filename
         if err := c.SaveUploadedFile(file, "."+imagePath); err != nil {
             formData, _ := json.Marshal(input)
             c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
@@ -113,26 +122,23 @@ func CreateEvent(c *gin.Context) {
         }
     }
 
-    // Create event
     event := models.Event{
-        Title:       input.Title,
-        Description: input.Description,
-        StartTime:   startTime,
-        EndTime:     endTime,
-        Location:    input.Location,
-        Image:       imagePath,
-        Status:      input.Status,
-        CreatedBy:   user.ID,
+        Title:        input.Title,
+        Description:  input.Description,
+        StartTime:    startTime,
+        EndTime:      endTime,
+        Location:     input.Location,
+        Image:        imagePath,
+        Status:       input.Status,
+        CreatedBy:    user.ID,
+        PublishedDate: publishedDate,
     }
 
     if err := config.DB.Create(&event).Error; err != nil {
-        formData, _ := json.Marshal(input)
-        c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
-        c.Redirect(http.StatusFound, "/events/new?error=Failed to create event")
+        handleRedirectWithFormData(c, input, "Failed to create event")
         return
     }
 
-    // Successful creation
     c.SetCookie("flash", "Event created successfully", 300, "/", "", false, true)
     c.Redirect(http.StatusFound, "/user/dashboard")
 }
@@ -147,11 +153,10 @@ func UpdateEvent(c *gin.Context) {
     eventID := c.Param("id")
     var existingEvent models.Event
     if err := config.DB.First(&existingEvent, "id = ?", eventID).Error; err != nil {
-		c.Redirect(http.StatusFound, "/user/dashboard?error=Event not found")
-		return
-	}
+        c.Redirect(http.StatusFound, "/user/dashboard?error=Event not found")
+        return
+    }
 
-    // Check permission
     if !utils.IsAdminOrOwner(user, existingEvent) {
         c.Redirect(http.StatusFound, "/user/dashboard?error=Permission denied")
         return
@@ -159,11 +164,10 @@ func UpdateEvent(c *gin.Context) {
 
     var input EventInput
     if err := c.ShouldBind(&input); err != nil {
-        c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=Please fill all required fields correctly", eventID))
+        handleRedirectWithFormData(c, input, fmt.Sprintf("/events/edit/%s?error=Invalid input", eventID))
         return
     }
 
-    // Check title uniqueness (excluding current event)
     var count int64
     config.DB.Model(&models.Event{}).Where("title = ? AND id != ?", input.Title, eventID).Count(&count)
     if count > 0 {
@@ -171,22 +175,33 @@ func UpdateEvent(c *gin.Context) {
         return
     }
 
-    // Parse dates
-    startTime, err := time.Parse("2006-01-02T15:04", input.StartTime)
+    startTime, err := parseDateTime(input.StartTime)
     if err != nil {
-        c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=Invalid start datetime format", eventID))
+        handleRedirectWithFormData(c, input, "Invalid start datetime format")
         return
     }
 
-    endTime, err := time.Parse("2006-01-02T15:04", input.EndTime)
+    endTime, err := parseDateTime(input.EndTime)
     if err != nil {
-        c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=Invalid end datetime format", eventID))
+        handleRedirectWithFormData(c, input, "Invalid end datetime format")
         return
     }
 
     if endTime.Before(startTime) {
-        c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=End datetime must be after start datetime", eventID))
+        handleRedirectWithFormData(c, input, "End datetime must be after start datetime")
         return
+    }
+
+    if input.Status == "published" {
+        now := time.Now()
+        existingEvent.PublishedDate = &now
+    } else if input.Status == "draft" && input.PublishedDate != "" {
+        parsedDate, err := parseDateTime(input.PublishedDate)
+        if err != nil {
+            handleRedirectWithFormData(c, input, "Invalid publish date format")
+            return
+        }
+        existingEvent.PublishedDate = &parsedDate
     }
 
     // Handle image upload
@@ -199,14 +214,13 @@ func UpdateEvent(c *gin.Context) {
         }
 
         // Save new image
-        if err := os.MkdirAll("uploads", 0755); err != nil {
+        if err := os.MkdirAll("uploads/events/", 0755); err != nil {
             c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=Server configuration error", eventID))
             return
         }
 
-        // filename := fmt.Sprintf("%d%s", time.Now().Unix(), filepath.Ext(file.Filename))
         filename    := utils.GenerateSecureFileName(file.Filename)
-        imagePath   := "/uploads/" + filename
+        imagePath   := "/uploads/events/" + filename
         if err := c.SaveUploadedFile(file, "."+imagePath); err != nil {
             c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=Failed to upload image", eventID))
             return
@@ -214,7 +228,6 @@ func UpdateEvent(c *gin.Context) {
         existingEvent.Image = imagePath
     }
 
-    // Update event
     existingEvent.Title = input.Title
     existingEvent.Description = input.Description
     existingEvent.StartTime = startTime
@@ -223,7 +236,7 @@ func UpdateEvent(c *gin.Context) {
     existingEvent.Status = input.Status
 
     if err := config.DB.Save(&existingEvent).Error; err != nil {
-        c.Redirect(http.StatusFound, fmt.Sprintf("/events/edit/%s?error=Failed to update event", eventID))
+        handleRedirectWithFormData(c, input, "Failed to update event")
         return
     }
 
@@ -277,4 +290,17 @@ func DeleteEvent(c *gin.Context) {
     // Success message via flash cookie
     c.SetCookie("flash", "Event deleted successfully", 300, "/", "", false, true)
     c.Redirect(http.StatusFound, "/user/dashboard")
+}
+
+// Helper function to handle redirects with form data
+func handleRedirectWithFormData(c *gin.Context, input EventInput, errorMessage string) {
+    formData, _ := json.Marshal(input)
+    c.SetCookie("form_data", string(formData), 300, "/", "", false, true)
+    c.Redirect(http.StatusFound, "/events/new?error="+url.QueryEscape(errorMessage))
+}
+
+// Function to parse datetime strings into time.Time objects
+func parseDateTime(datetimeStr string) (time.Time, error) {
+    const datetimeFormat = "2006-01-02T15:04"
+    return time.Parse(datetimeFormat, datetimeStr)
 }

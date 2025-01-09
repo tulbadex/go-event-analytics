@@ -1,12 +1,9 @@
-package main
+package router
 
 import (
-	"event-analytics/config"
 	"event-analytics/controllers"
 	"event-analytics/handler"
 	"event-analytics/middlewares"
-	"event-analytics/utils"
-	"event-analytics/cron"
 	"fmt"
 	"html/template"
 	"time"
@@ -37,13 +34,9 @@ func formatForDisplay(t time.Time) string {
 	return t.Format("Jan 2, 2006 3:04 PM")
 }
 
-func main() {
-	// Initialize database and Redis
-	config.Init()
-	utils.InitializeRoles()
-
+func SetupRouter() *gin.Engine {
 	r := gin.Default()
-
+	
 	// Important: First set the template functions
 	r.SetFuncMap(template.FuncMap{
 		"formatDate":     formatAsDate,      // for basic date formatting
@@ -51,11 +44,8 @@ func main() {
 		"formatDisplay":  formatForDisplay,  // for user-friendly display
 	})
 
-	// Start the cron jobs
-	go cron.StartCronJobs()
-
 	// Then load the templates
-	r.LoadHTMLGlob("templates/*")
+	r.LoadHTMLGlob("../templates/*")
 
 	// Set template delimiters
 	r.Delims("{{", "}}")
@@ -109,9 +99,5 @@ func main() {
 	}
 
 	r.GET("/ws", handler.WebSocketHandler)
-
-	// Start the WebSocket hub
-	go handler.Hub.Run()
-
-	r.Run(":8080")
+	return r
 }

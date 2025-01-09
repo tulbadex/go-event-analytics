@@ -5,6 +5,10 @@
     .text-truncate {
         white-space: nowrap;
         overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3; /* Limits the text to 3 lines */
+        line-clamp: 3; /* Limits the text to 3 lines */
+        -webkit-box-orient: vertical;
         text-overflow: ellipsis;
     }
     
