@@ -3,12 +3,20 @@ package main
 import (
 	"event-analytics/config"
 	"event-analytics/controllers"
+	"event-analytics/cron"
 	"event-analytics/handler"
 	"event-analytics/middlewares"
+	"event-analytics/pkg/csrf"
+	"event-analytics/pkg/ratelimit"
 	"event-analytics/utils"
-	"event-analytics/cron"
+	"context"
 	"fmt"
 	"html/template"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -44,30 +52,31 @@ func main() {
 
 	r := gin.Default()
 
-	// Important: First set the template functions
+	// Set template functions
 	r.SetFuncMap(template.FuncMap{
-		"formatDate":     formatAsDate,      // for basic date formatting
-		"formatDatetime": formatDatetime,    // for datetime-local inputs
-		"formatDisplay":  formatForDisplay,  // for user-friendly display
+		"formatDate":     formatAsDate,
+		"formatDatetime": formatDatetime,
+		"formatDisplay":  formatForDisplay,
 	})
 
 	// Start the cron jobs
 	go cron.StartCronJobs()
 
-	// Then load the templates
+	// Load all templates
 	r.LoadHTMLGlob("templates/*")
-
-	// Set template delimiters
-	r.Delims("{{", "}}")
 
 	// Serve static files
 	r.Static("/static", "./static")
 	r.Static("/uploads", "./uploads")
 
-
 	// Use middleware
+	r.Use(middlewares.Recovery())
+	r.Use(middlewares.Logger())
+	r.Use(middlewares.ErrorHandler())
+	r.Use(ratelimit.Middleware(config.RedisClient, 100, time.Minute))
 	r.Use(middlewares.UserMiddleware())
 	r.Use(middlewares.FlashMiddleware())
+	r.Use(csrf.Middleware())
 
 	// Routes
 	r.GET("/", middlewares.PreventAuthenticatedAccess(), handler.ShowLoginPage)
@@ -113,5 +122,28 @@ func main() {
 	// Start the WebSocket hub
 	go handler.Hub.Run()
 
-	r.Run(":8080")
+	// Graceful shutdown
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
+	}
+
+	log.Println("Server exited")
 }

@@ -37,6 +37,8 @@ func ShowLoginPage(c *gin.Context) {
             message.Error = "Please login to access the page"
         case "invalid_user":
             message.Error = "User data is invalid"
+        case "session_expired":
+            message.Error = "Your session has expired. Please login again"
         default:
             message.Error = "An error occurred"
         }

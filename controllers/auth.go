@@ -55,8 +55,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	sessionToken := utils.GenerateRandomToken()
-	if err := utils.SaveSession(sessionToken, user); err != nil {
+	sessionToken, err := config.SessionStore.Create(c.Request.Context(), user.ID.String())
+	if err != nil {
 		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
 			"error": "Failed to create session",
 			"title": "Login",
@@ -64,7 +64,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("session_token", sessionToken, 3600, "/", "", false, true)
+	c.SetCookie("session_token", sessionToken, 86400, "/", "", false, true)
 	c.Redirect(http.StatusFound, "/user/dashboard")
 }
 
@@ -72,15 +72,14 @@ func Logout(c *gin.Context) {
 	sessionToken, err := c.Cookie("session_token")
 	if err != nil {
 		log.Printf("Logout: Failed to get session token: %v", err)
+		c.SetCookie("session_token", "", -1, "/", "", false, true)
 		c.Redirect(http.StatusFound, "/auth/login")
 		return
 	}
 
-	err = config.RedisClient.Del(c, sessionToken).Err()
+	err = config.SessionStore.Delete(c.Request.Context(), sessionToken)
 	if err != nil {
-		log.Printf("Logout: Redis deletion failed: %v", err)
-		c.Redirect(http.StatusFound, "/auth/login")
-		return
+		log.Printf("Logout: Session deletion failed: %v", err)
 	}
 
 	c.SetCookie("session_token", "", -1, "/", "", false, true)

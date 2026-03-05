@@ -1,8 +1,8 @@
 module event-analytics
 
-go 1.22
+go 1.26
 
-toolchain go1.22.10
+toolchain go1.26.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
